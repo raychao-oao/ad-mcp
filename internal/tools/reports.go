@@ -7,13 +7,19 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	admcppolicy "github.com/raychao-oao/ad-mcp/internal/policy"
 	ldapclient "github.com/raychao-oao/ad-mcp/internal/ldap"
+	mcppolicy "github.com/raychao-oao/mcp-policy/pkg/policy"
+	"github.com/raychao-oao/mcp-policy/pkg/yamlengine"
 )
 
-func registerReportTools(s *server.MCPServer, lc *ldapclient.Client) {
+func registerReportTools(s *server.MCPServer, lc *ldapclient.Client, engine *yamlengine.Engine) {
 	s.AddTool(mcp.NewTool("ad.find_locked_users",
 		mcp.WithDescription("Find all currently locked-out AD accounts."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.find_locked_users", mcppolicy.Resource{Type: "ad:report"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		users, err := lc.FindLockedUsers()
 		if err != nil {
 			return toolErr(err), nil
@@ -33,6 +39,9 @@ func registerReportTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithDescription("Find accounts with no logon in the past N days."),
 		mcp.WithNumber("days", mcp.Description("Number of days of inactivity (default: 90)")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.find_inactive_users", mcppolicy.Resource{Type: "ad:report"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		days := req.GetInt("days", 90)
 		users, err := lc.FindInactiveUsers(days)
 		if err != nil {
@@ -59,6 +68,9 @@ func registerReportTools(s *server.MCPServer, lc *ldapclient.Client) {
 	s.AddTool(mcp.NewTool("ad.find_disabled_users",
 		mcp.WithDescription("Find all disabled AD accounts."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.find_disabled_users", mcppolicy.Resource{Type: "ad:report"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		users, err := lc.FindDisabledUsers()
 		if err != nil {
 			return toolErr(err), nil
@@ -82,6 +94,9 @@ func registerReportTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithDescription("Find accounts expiring within the next N days."),
 		mcp.WithNumber("days", mcp.Description("Look-ahead window in days (default: 30)")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.find_expiring_accounts", mcppolicy.Resource{Type: "ad:report"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		days := req.GetInt("days", 30)
 		users, err := lc.FindExpiringAccounts(days)
 		if err != nil {
@@ -105,6 +120,9 @@ func registerReportTools(s *server.MCPServer, lc *ldapclient.Client) {
 	s.AddTool(mcp.NewTool("ad.find_password_never_expires",
 		mcp.WithDescription("Find accounts with the DONT_EXPIRE_PASSWORD flag set."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.find_password_never_expires", mcppolicy.Resource{Type: "ad:report"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		users, err := lc.FindPasswordNeverExpires()
 		if err != nil {
 			return toolErr(err), nil
@@ -128,6 +146,9 @@ func registerReportTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithNumber("inactive_days", mcp.Description("Inactivity threshold in days (default: 90)")),
 		mcp.WithNumber("expiring_days", mcp.Description("Expiry look-ahead in days (default: 30)")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.generate_account_review_report", mcppolicy.Resource{Type: "ad:report"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		inactiveDays := req.GetInt("inactive_days", 90)
 		expiringDays := req.GetInt("expiring_days", 30)
 

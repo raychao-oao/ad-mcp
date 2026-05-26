@@ -6,14 +6,20 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	admcppolicy "github.com/raychao-oao/ad-mcp/internal/policy"
 	ldapclient "github.com/raychao-oao/ad-mcp/internal/ldap"
+	mcppolicy "github.com/raychao-oao/mcp-policy/pkg/policy"
+	"github.com/raychao-oao/mcp-policy/pkg/yamlengine"
 )
 
-func registerUserTools(s *server.MCPServer, lc *ldapclient.Client) {
+func registerUserTools(s *server.MCPServer, lc *ldapclient.Client, engine *yamlengine.Engine) {
 	s.AddTool(mcp.NewTool("ad.search_user",
 		mcp.WithDescription("Search Active Directory users by name, email, or username."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Name, email, or sAMAccountName to search for")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.search_user", mcppolicy.Resource{Type: "ad:user"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		query := req.GetString("query", "")
 		users, err := lc.SearchUsers(query)
 		if err != nil {
@@ -41,6 +47,9 @@ func registerUserTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithString("user_id", mcp.Required(), mcp.Description("sAMAccountName or distinguished name")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := req.GetString("user_id", "")
+		if err := admcppolicy.Authorize(ctx, engine, "ad.get_user", mcppolicy.Resource{Type: "ad:user", ID: id}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		u, err := lc.GetUser(id)
 		if err != nil {
 			return toolErr(err), nil
@@ -52,7 +61,7 @@ func registerUserTools(s *server.MCPServer, lc *ldapclient.Client) {
 		out += fmt.Sprintf("OU:         %s\n", u.OU)
 		out += fmt.Sprintf("Manager DN: %s\n", u.ManagerDN)
 		out += fmt.Sprintf("DN:         %s\n\n", u.DN)
-		out += fmt.Sprintf("Status:\n")
+		out += "Status:\n"
 		out += fmt.Sprintf("  Disabled:          %v\n", u.Disabled)
 		out += fmt.Sprintf("  Locked:            %v\n", u.Locked)
 		out += fmt.Sprintf("  Password never exp:%v\n", u.PasswordNeverExp)
@@ -79,6 +88,9 @@ func registerUserTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithString("user_dn", mcp.Required(), mcp.Description("Distinguished name of the user")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		dn := req.GetString("user_dn", "")
+		if err := admcppolicy.Authorize(ctx, engine, "ad.get_user_groups", mcppolicy.Resource{Type: "ad:user", ID: dn}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		groups, err := lc.GetUserGroups(dn)
 		if err != nil {
 			return toolErr(err), nil

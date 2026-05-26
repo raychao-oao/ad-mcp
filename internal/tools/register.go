@@ -6,13 +6,14 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	ldapclient "github.com/raychao-oao/ad-mcp/internal/ldap"
+	"github.com/raychao-oao/mcp-policy/pkg/yamlengine"
 )
 
-// Register adds all MVP1 tools to the MCP server.
-func Register(s *server.MCPServer, lc *ldapclient.Client) {
-	registerUserTools(s, lc)
-	registerGroupTools(s, lc)
-	registerReportTools(s, lc)
+// Register adds all tools to the MCP server.
+func Register(s *server.MCPServer, lc *ldapclient.Client, engine *yamlengine.Engine) {
+	registerUserTools(s, lc, engine)
+	registerGroupTools(s, lc, engine)
+	registerReportTools(s, lc, engine)
 }
 
 func toolText(text string) *mcp.CallToolResult {

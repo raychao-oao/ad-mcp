@@ -6,14 +6,20 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	admcppolicy "github.com/raychao-oao/ad-mcp/internal/policy"
 	ldapclient "github.com/raychao-oao/ad-mcp/internal/ldap"
+	mcppolicy "github.com/raychao-oao/mcp-policy/pkg/policy"
+	"github.com/raychao-oao/mcp-policy/pkg/yamlengine"
 )
 
-func registerGroupTools(s *server.MCPServer, lc *ldapclient.Client) {
+func registerGroupTools(s *server.MCPServer, lc *ldapclient.Client, engine *yamlengine.Engine) {
 	s.AddTool(mcp.NewTool("ad.search_group",
 		mcp.WithDescription("Search Active Directory groups by name or description."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Group name or description to search for")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if err := admcppolicy.Authorize(ctx, engine, "ad.search_group", mcppolicy.Resource{Type: "ad:group"}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		query := req.GetString("query", "")
 		groups, err := lc.SearchGroups(query)
 		if err != nil {
@@ -38,6 +44,9 @@ func registerGroupTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithString("group_id", mcp.Required(), mcp.Description("Group cn or distinguished name")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := req.GetString("group_id", "")
+		if err := admcppolicy.Authorize(ctx, engine, "ad.get_group", mcppolicy.Resource{Type: "ad:group", ID: id}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		g, err := lc.GetGroup(id)
 		if err != nil {
 			return toolErr(err), nil
@@ -55,6 +64,9 @@ func registerGroupTools(s *server.MCPServer, lc *ldapclient.Client) {
 		mcp.WithString("group_dn", mcp.Required(), mcp.Description("Distinguished name of the group")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		dn := req.GetString("group_dn", "")
+		if err := admcppolicy.Authorize(ctx, engine, "ad.list_group_members", mcppolicy.Resource{Type: "ad:group", ID: dn}, ""); err != nil {
+			return toolErr(err), nil
+		}
 		users, err := lc.ListGroupMembers(dn)
 		if err != nil {
 			return toolErr(err), nil
