@@ -11,7 +11,7 @@ import (
 	"github.com/raychao-oao/mcp-policy/pkg/yamlengine"
 )
 
-var Version = "0.1.1"
+var Version = "0.1.2"
 
 func main() {
 	cfg, err := config.Load()
