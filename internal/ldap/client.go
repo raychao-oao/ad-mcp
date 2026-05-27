@@ -312,7 +312,9 @@ func ouFromDN(dn string) string {
 }
 
 // Windows FILETIME is 100-nanosecond intervals since 1601-01-01.
-var winEpoch = time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC)
+// windowsEpochDiff is the number of seconds between the Windows FILETIME
+// epoch (1601-01-01) and the Unix epoch (1970-01-01).
+const windowsEpochDiff = int64(11644473600)
 
 func parseWinFileTime(s string) *time.Time {
 	if s == "" || s == "0" || s == "9223372036854775807" {
@@ -322,10 +324,14 @@ func parseWinFileTime(s string) *time.Time {
 	if err != nil || ft == 0 {
 		return nil
 	}
-	t := winEpoch.Add(time.Duration(ft * 100))
+	// ft is in 100-ns intervals since 1601-01-01; convert to Unix time.
+	secs := ft/10_000_000 - windowsEpochDiff
+	nsecs := (ft % 10_000_000) * 100
+	t := time.Unix(secs, nsecs).UTC()
 	return &t
 }
 
 func toWindowsFileTime(t time.Time) int64 {
-	return t.Sub(winEpoch).Nanoseconds() / 100
+	// Convert Unix seconds to 100-ns intervals since 1601-01-01.
+	return (t.Unix() + windowsEpochDiff) * 10_000_000
 }
