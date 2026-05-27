@@ -13,19 +13,32 @@ import (
 // Client wraps an LDAP connection with AD-specific helpers.
 type Client struct {
 	conn   *goldap.Conn
+	cfg    config.LDAPConfig
 	baseDN string
 }
 
 func New(cfg config.LDAPConfig) (*Client, error) {
-	conn, err := goldap.DialURL(cfg.URL)
+	c := &Client{cfg: cfg, baseDN: cfg.BaseDN}
+	if err := c.dial(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (c *Client) dial() error {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+	conn, err := goldap.DialURL(c.cfg.URL)
 	if err != nil {
-		return nil, fmt.Errorf("ldap dial: %w", err)
+		return fmt.Errorf("ldap dial: %w", err)
 	}
-	if err := conn.Bind(cfg.BindDN, cfg.Password); err != nil {
+	if err := conn.Bind(c.cfg.BindDN, c.cfg.Password); err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("ldap bind: %w", err)
+		return fmt.Errorf("ldap bind: %w", err)
 	}
-	return &Client{conn: conn, baseDN: cfg.BaseDN}, nil
+	c.conn = conn
+	return nil
 }
 
 func (c *Client) Close() { c.conn.Close() }
@@ -192,6 +205,12 @@ func (c *Client) searchUsers(filter string) ([]User, error) {
 		0, 0, false, filter, userAttrs, nil,
 	)
 	res, err := c.conn.Search(req)
+	if err != nil && isConnErr(err) {
+		if rerr := c.dial(); rerr != nil {
+			return nil, fmt.Errorf("ldap reconnect: %w", rerr)
+		}
+		res, err = c.conn.Search(req)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("ldap search: %w", err)
 	}
@@ -208,6 +227,12 @@ func (c *Client) searchGroups(filter string) ([]Group, error) {
 		0, 0, false, filter, groupAttrs, nil,
 	)
 	res, err := c.conn.Search(req)
+	if err != nil && isConnErr(err) {
+		if rerr := c.dial(); rerr != nil {
+			return nil, fmt.Errorf("ldap reconnect: %w", rerr)
+		}
+		res, err = c.conn.Search(req)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("ldap search: %w", err)
 	}
@@ -216,6 +241,19 @@ func (c *Client) searchGroups(filter string) ([]Group, error) {
 		groups = append(groups, entryToGroup(e))
 	}
 	return groups, nil
+}
+
+// isConnErr reports whether the error looks like a stale/dropped connection.
+func isConnErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "EOF") ||
+		strings.Contains(msg, "use of closed network connection") ||
+		goldap.IsErrorWithCode(err, goldap.ErrorNetwork)
 }
 
 func entryToUser(e *goldap.Entry) User {
