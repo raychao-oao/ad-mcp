@@ -113,9 +113,41 @@ func (c *Client) GetUser(id string) (*User, error) {
 }
 
 // GetUserGroups returns the groups a user belongs to.
-func (c *Client) GetUserGroups(userDN string) ([]Group, error) {
-	filter := fmt.Sprintf("(&(objectClass=group)(member=%s))", goldap.EscapeFilter(userDN))
-	return c.searchGroups(filter)
+// userID may be a sAMAccountName or a distinguished name.
+func (c *Client) GetUserGroups(userID string) ([]Group, error) {
+	var filter string
+	if strings.Contains(userID, "=") {
+		filter = fmt.Sprintf("(&(objectClass=user)(distinguishedName=%s))", goldap.EscapeFilter(userID))
+	} else {
+		filter = fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", goldap.EscapeFilter(userID))
+	}
+	req := goldap.NewSearchRequest(
+		c.baseDN, goldap.ScopeWholeSubtree, goldap.NeverDerefAliases,
+		0, 0, false, filter, []string{"memberOf"}, nil,
+	)
+	res, err := c.conn.Search(req)
+	if err != nil && isConnErr(err) {
+		if rerr := c.dial(); rerr != nil {
+			return nil, fmt.Errorf("ldap reconnect: %w", rerr)
+		}
+		res, err = c.conn.Search(req)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ldap search: %w", err)
+	}
+	if len(res.Entries) == 0 {
+		return nil, fmt.Errorf("user not found: %s", userID)
+	}
+	memberOf := res.Entries[0].GetAttributeValues("memberOf")
+	groups := make([]Group, 0, len(memberOf))
+	for _, dn := range memberOf {
+		groups = append(groups, Group{
+			DN:   dn,
+			Name: cnFromDN(dn),
+			OU:   ouFromDN(dn),
+		})
+	}
+	return groups, nil
 }
 
 // SearchGroups searches groups by name or description.
@@ -147,10 +179,15 @@ func (c *Client) GetGroup(id string) (*Group, error) {
 }
 
 // ListGroupMembers returns users who are direct members of a group.
-func (c *Client) ListGroupMembers(groupDN string) ([]User, error) {
+// groupID may be a cn (group name) or a distinguished name.
+func (c *Client) ListGroupMembers(groupID string) ([]User, error) {
+	g, err := c.GetGroup(groupID)
+	if err != nil {
+		return nil, err
+	}
 	filter := fmt.Sprintf(
 		"(&(objectClass=user)(objectCategory=person)(memberOf=%s))",
-		goldap.EscapeFilter(groupDN),
+		goldap.EscapeFilter(g.DN),
 	)
 	return c.searchUsers(filter)
 }
@@ -297,6 +334,14 @@ func entryToGroup(e *goldap.Entry) Group {
 		OU:          ouFromDN(e.DN),
 		MemberCount: len(e.GetAttributeValues("member")),
 	}
+}
+
+func cnFromDN(dn string) string {
+	parts := strings.Split(dn, ",")
+	if len(parts) > 0 {
+		return strings.TrimPrefix(strings.TrimPrefix(parts[0], "CN="), "cn=")
+	}
+	return dn
 }
 
 // ouFromDN extracts the OU path from a distinguished name.

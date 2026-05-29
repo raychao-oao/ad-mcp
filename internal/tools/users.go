@@ -85,9 +85,9 @@ func registerUserTools(s *server.MCPServer, lc *ldapclient.Client, engine *yamle
 
 	s.AddTool(mcp.NewTool("ad.get_user_groups",
 		mcp.WithDescription("List all groups a user belongs to."),
-		mcp.WithString("user_dn", mcp.Required(), mcp.Description("Distinguished name of the user")),
+		mcp.WithString("user_id", mcp.Required(), mcp.Description("sAMAccountName or distinguished name of the user")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		dn := req.GetString("user_dn", "")
+		dn := req.GetString("user_id", "")
 		if err := admcppolicy.Authorize(ctx, engine, "ad.get_user_groups", mcppolicy.Resource{Type: "ad:user", ID: dn}, ""); err != nil {
 			return toolErr(err), nil
 		}
