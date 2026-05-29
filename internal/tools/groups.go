@@ -61,9 +61,9 @@ func registerGroupTools(s *server.MCPServer, lc *ldapclient.Client, engine *yaml
 
 	s.AddTool(mcp.NewTool("ad.list_group_members",
 		mcp.WithDescription("List direct members of an AD group."),
-		mcp.WithString("group_dn", mcp.Required(), mcp.Description("Distinguished name of the group")),
+		mcp.WithString("group_id", mcp.Required(), mcp.Description("Group cn (name) or distinguished name")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		dn := req.GetString("group_dn", "")
+		dn := req.GetString("group_id", "")
 		if err := admcppolicy.Authorize(ctx, engine, "ad.list_group_members", mcppolicy.Resource{Type: "ad:group", ID: dn}, ""); err != nil {
 			return toolErr(err), nil
 		}
