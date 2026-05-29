@@ -83,6 +83,41 @@ var groupAttrs = []string{
 	"distinguishedName", "cn", "description", "member",
 }
 
+// GetUserRaw returns all non-empty attributes for a user by sAMAccountName or DN.
+func (c *Client) GetUserRaw(id string) (map[string][]string, error) {
+	var filter string
+	if strings.Contains(id, "=") {
+		filter = fmt.Sprintf("(&(objectClass=user)(distinguishedName=%s))", goldap.EscapeFilter(id))
+	} else {
+		filter = fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", goldap.EscapeFilter(id))
+	}
+	req := goldap.NewSearchRequest(
+		c.baseDN, goldap.ScopeWholeSubtree, goldap.NeverDerefAliases,
+		0, 0, false, filter, []string{"*"}, nil,
+	)
+	res, err := c.conn.Search(req)
+	if err != nil && isConnErr(err) {
+		if rerr := c.dial(); rerr != nil {
+			return nil, fmt.Errorf("ldap reconnect: %w", rerr)
+		}
+		res, err = c.conn.Search(req)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ldap search: %w", err)
+	}
+	if len(res.Entries) == 0 {
+		return nil, fmt.Errorf("user not found: %s", id)
+	}
+	attrs := make(map[string][]string)
+	attrs["distinguishedName"] = []string{res.Entries[0].DN}
+	for _, a := range res.Entries[0].Attributes {
+		if len(a.Values) > 0 {
+			attrs[a.Name] = a.Values
+		}
+	}
+	return attrs, nil
+}
+
 // SearchUsers searches AD users matching the query string (name, email, or sAMAccountName).
 func (c *Client) SearchUsers(query string) ([]User, error) {
 	escaped := goldap.EscapeFilter(query)
