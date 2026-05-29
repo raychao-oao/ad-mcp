@@ -1,7 +1,7 @@
 ---
 name: ad-mcp
 description: This skill should be used when the user asks to "find a user", "search Active Directory", "unlock an account", "disable a user", "reset a password", "check group membership", "find locked accounts", "find inactive users", "generate an account review report", or any task involving Active Directory user and group management.
-version: 0.1.2
+version: 0.1.4
 ---
 
 # ad-mcp — Active Directory Operations
@@ -68,12 +68,24 @@ Always search first. Never assume a user_id — always get it from search_user.
 When the user says: "what groups is alice in?", "who's in Domain Admins?", "list members of IT-Helpdesk"
 
 ```
-# For a user's groups:
-get_user_groups(user_id)
+# For a user's groups (accepts sAMAccountName or DN):
+get_user_groups(user_id: "alice.chen")
 
-# For a group's members:
-list_group_members(group: "IT-Helpdesk")
+# For a group's members (accepts group cn or DN):
+list_group_members(group_id: "IT-Helpdesk")
 ```
+
+Note: always pass `sAMAccountName` from `search_user` — never construct a DN manually.
+
+### Inspecting All User Attributes
+
+When the user says: "what AD fields does alice have?", "what attribute stores the employee ID?", "show me all raw AD data for this user"
+
+```
+get_user_raw(user_id: "alice.chen")
+```
+
+Returns every non-empty attribute on the user object, including custom and extension fields (e.g. `extensionAttribute1~15`, `employeeID`). Use this to discover which attribute stores employee IDs or other site-specific data in your AD environment.
 
 ### Finding a Group
 
