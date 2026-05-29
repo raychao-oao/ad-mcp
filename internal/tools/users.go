@@ -83,6 +83,45 @@ func registerUserTools(s *server.MCPServer, lc *ldapclient.Client, engine *yamle
 		return toolText(out), nil
 	})
 
+	s.AddTool(mcp.NewTool("ad.get_user_raw",
+		mcp.WithDescription("Return all non-empty AD attributes for a user. Useful for discovering which attributes (e.g. employee ID, custom fields) are populated in this environment."),
+		mcp.WithString("user_id", mcp.Required(), mcp.Description("sAMAccountName or distinguished name")),
+	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id := req.GetString("user_id", "")
+		if err := admcppolicy.Authorize(ctx, engine, "ad.get_user_raw", mcppolicy.Resource{Type: "ad:user", ID: id}, ""); err != nil {
+			return toolErr(err), nil
+		}
+		attrs, err := lc.GetUserRaw(id)
+		if err != nil {
+			return toolErr(err), nil
+		}
+		out := fmt.Sprintf("All attributes for %s:\n\n", id)
+		keys := make([]string, 0, len(attrs))
+		for k := range attrs {
+			keys = append(keys, k)
+		}
+		// sort for stable output
+		for i := 0; i < len(keys)-1; i++ {
+			for j := i + 1; j < len(keys); j++ {
+				if keys[i] > keys[j] {
+					keys[i], keys[j] = keys[j], keys[i]
+				}
+			}
+		}
+		for _, k := range keys {
+			vals := attrs[k]
+			if len(vals) == 1 {
+				out += fmt.Sprintf("  %-40s %s\n", k+":", vals[0])
+			} else {
+				out += fmt.Sprintf("  %s:\n", k)
+				for _, v := range vals {
+					out += fmt.Sprintf("    - %s\n", v)
+				}
+			}
+		}
+		return toolText(out), nil
+	})
+
 	s.AddTool(mcp.NewTool("ad.get_user_groups",
 		mcp.WithDescription("List all groups a user belongs to."),
 		mcp.WithString("user_id", mcp.Required(), mcp.Description("sAMAccountName or distinguished name of the user")),
