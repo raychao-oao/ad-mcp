@@ -40,8 +40,8 @@ github.com/mark3labs/mcp-go v0.54.0 h1:PZhQvd+5xrT43cUoiaKn/hDcvLUhcLc1twSEKYPTc
 github.com/mark3labs/mcp-go v0.54.0/go.mod h1:+8WclSK1ZUweCP3hvktSji8n8ABG/95QaEkeVE/Uwas=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/raychao-oao/mcp-policy v0.1.0 h1:5/FLLHsVT7RuR8omHvpW56tTtLGnemE+KH82sbpJ2dY=
-github.com/raychao-oao/mcp-policy v0.1.0/go.mod h1:RUJpRjcxCPLe6AO+7pFpu0lfbImznT7zdUn65SKar/E=
+github.com/raychao-oao/mcp-policy v0.1.1 h1:UYUcv7X92Oc9xMSo24HFnh095/ryVp/zJEVOAmYgt2I=
+github.com/raychao-oao/mcp-policy v0.1.1/go.mod h1:CR9ZAgerxXeet3WExDVz2zXSD/U/xY7XYtJ6oxx2Ze4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 h1:KRzFb2m7YtdldCEkzs6KqmJw4nqEVZGK7IN2kJkjTuQ=
