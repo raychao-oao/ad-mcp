@@ -1,7 +1,7 @@
 ---
 name: ad-mcp
 description: This skill should be used when the user asks to "find a user", "search Active Directory", "unlock an account", "disable a user", "reset a password", "check group membership", "find locked accounts", "find inactive users", "generate an account review report", or any task involving Active Directory user and group management.
-version: 0.1.4
+version: 0.1.5
 ---
 
 # ad-mcp — Active Directory Operations
